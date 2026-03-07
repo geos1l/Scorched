@@ -1,0 +1,93 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "toronto_zone_001",
+        "city_id": "toronto",
+        "severity": "extreme",
+        "mean_relative_heat": 4.2,
+        "top_contributors": ["High building density", "Minimal vegetation", "Dark impervious surfaces"],
+        "top_recommendations": ["Install green roofs on commercial buildings", "Plant street trees along King St", "Replace dark asphalt with reflective paving"],
+        "gemini_summary": ""
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.400, 43.640],
+          [-79.360, 43.640],
+          [-79.360, 43.660],
+          [-79.400, 43.660],
+          [-79.400, 43.640]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "toronto_zone_002",
+        "city_id": "toronto",
+        "severity": "high",
+        "mean_relative_heat": 2.8,
+        "top_contributors": ["Industrial land use", "Low NDVI", "High road coverage"],
+        "top_recommendations": ["Create pocket parks on vacant lots", "Incentivize cool-roof retrofits", "Improve tree canopy cover"],
+        "gemini_summary": ""
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.280, 43.755],
+          [-79.230, 43.755],
+          [-79.230, 43.780],
+          [-79.280, 43.780],
+          [-79.280, 43.755]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "toronto_zone_003",
+        "city_id": "toronto",
+        "severity": "moderate",
+        "mean_relative_heat": 1.4,
+        "top_contributors": ["Residential density", "Partial tree cover", "Limited water bodies"],
+        "top_recommendations": ["Expand community garden program", "Install shade structures at transit stops", "Promote residential green-roof subsidies"],
+        "gemini_summary": ""
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.545, 43.635],
+          [-79.500, 43.635],
+          [-79.500, 43.660],
+          [-79.545, 43.660],
+          [-79.545, 43.635]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "toronto_zone_004",
+        "city_id": "toronto",
+        "severity": "low",
+        "mean_relative_heat": 0.3,
+        "top_contributors": ["High vegetation coverage", "Proximity to ravine", "Lower building density"],
+        "top_recommendations": ["Maintain existing tree canopy", "Protect ravine buffer zones", "Monitor for future development impacts"],
+        "gemini_summary": ""
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.425, 43.740],
+          [-79.380, 43.740],
+          [-79.380, 43.760],
+          [-79.425, 43.760],
+          [-79.425, 43.740]
+        ]]
+      }
+    }
+  ]
+}
