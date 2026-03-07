@@ -1,0 +1,29 @@
+# SegFormer inference (jgerbscheid/segformer_b1-nlver_finetuned-1024-1024) + pipeline
+# Model stack aligned with nlveranderdetectie environment.yml
+
+# Inference
+transformers>=4.31.0
+torch>=2.0.0
+torchvision>=0.15.2
+Pillow>=10.0.0
+opencv-python>=4.8.0
+segmentation-models-pytorch>=0.3.3
+
+# Model env extras (nlver stack)
+scipy
+pyyaml
+requests
+numpy>=1.24.0
+imageio
+yacs
+lightning>=2.0.7
+wandb>=0.15.8
+
+# Raster/geo (inference georef + aggregate.py)
+rasterio>=1.3.0
+
+# Pipeline (aggregate, GIS, training, zoning, API)
+geopandas>=0.14.0
+pandas>=2.0.0
+pyarrow>=14.0.0
+matplotlib>=3.7.0
