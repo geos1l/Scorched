@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 # Raw source data — too large for git, re-downloadable
 data/raw/
+cache/

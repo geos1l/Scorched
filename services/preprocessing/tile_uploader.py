@@ -22,6 +22,13 @@ Usage:
   python -m services.preprocessing.tile_uploader --dry-run       # count missing, don't upload
   python -m services.preprocessing.tile_uploader --workers 2     # parallel workers (default 2)
   python -m services.preprocessing.tile_uploader --index-only    # only regenerate tile_index.json
+
+  # 5-way split (run 5 processes at once; no overlap — each shard gets 1/5 of current missing by index):
+  python -m services.preprocessing.tile_uploader --workers 16 --shard 0 --total-shards 5
+  python -m services.preprocessing.tile_uploader --workers 16 --shard 1 --total-shards 5
+  python -m services.preprocessing.tile_uploader --workers 16 --shard 2 --total-shards 5
+  python -m services.preprocessing.tile_uploader --workers 16 --shard 3 --total-shards 5
+  python -m services.preprocessing.tile_uploader --workers 16 --shard 4 --total-shards 5
 """
 
 from __future__ import annotations
@@ -208,7 +215,8 @@ def main(dry_run: bool = False, workers: int = 16, index_only: bool = False,
     existing_keys = list_existing_keys(s3)
     missing = [c for c in cells if c["key"] not in existing_keys]
 
-    # Split work across instances: each handles every Nth tile starting at shard index
+    # Partition current missing set by index (i % total_shards == shard). No overlap:
+    # shard 0 gets indices 0,5,10,..., shard 1 gets 1,6,11,..., etc. Safe sequential or parallel.
     if total_shards > 1:
         missing = [c for i, c in enumerate(missing) if i % total_shards == shard]
         log.info("Shard %d/%d — handling %d tiles", shard + 1, total_shards, len(missing))
