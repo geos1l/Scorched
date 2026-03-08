@@ -8,9 +8,11 @@ const SEVERITY_COLORS: Record<string, string> = {
   low: '#27AE60',
 }
 
+import { ZoneDetail } from './DetailPanel'
+
 interface ZoneLayerProps {
   map: mapboxgl.Map
-  onZoneClick: (zoneId: string) => void
+  onZoneClick: (zoneId: string, fallback: Omit<ZoneDetail, 'gemini_summary'>) => void
 }
 
 export default function ZoneLayer({ map, onZoneClick }: ZoneLayerProps) {
@@ -19,8 +21,7 @@ export default function ZoneLayer({ map, onZoneClick }: ZoneLayerProps) {
     let cleanup: (() => void) | undefined
 
     async function addLayers() {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://45.63.18.135:8000'
-      const res = await fetch(`${base}/zones?city_id=toronto`)
+      const res = await fetch(`/api/backend/zones?city_id=toronto`)
       if (!mounted) return
       const json = await res.json()
       const data = json.zones
@@ -57,8 +58,16 @@ export default function ZoneLayer({ map, onZoneClick }: ZoneLayerProps) {
       })
 
       const handleClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
-        const zoneId = e.features?.[0]?.properties?.zone_id
-        if (zoneId) onZoneClick(zoneId)
+        const props = e.features?.[0]?.properties
+        if (!props?.zone_id) return
+        const fallback: Omit<ZoneDetail, 'gemini_summary'> = {
+          zone_id: props.zone_id,
+          severity: props.severity,
+          mean_relative_heat: props.mean_relative_heat ?? 0,
+          top_contributors: typeof props.top_contributors === 'string' ? JSON.parse(props.top_contributors) : (props.top_contributors ?? []),
+          top_recommendations: typeof props.top_recommendations === 'string' ? JSON.parse(props.top_recommendations) : (props.top_recommendations ?? []),
+        }
+        onZoneClick(props.zone_id, fallback)
       }
 
       const handleMouseEnter = () => { map.getCanvas().style.cursor = 'pointer' }

@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X, Sparkles } from 'lucide-react'
 
 export interface ZoneDetail {
   zone_id: string
@@ -35,7 +35,26 @@ export default function DetailPanel({ zone, loading, error, onClose }: DetailPan
 
       <div className="p-4 space-y-4">
         {loading && (
-          <p className="text-gray-400 text-sm text-center py-6">Loading zone data...</p>
+          <>
+            <div className="h-5 w-3/4 bg-gray-700 rounded animate-pulse" />
+            <div className="h-16 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-3 w-1/3 bg-gray-700 rounded animate-pulse" />
+              <div className="h-4 w-full bg-gray-800 rounded animate-pulse" />
+              <div className="h-4 w-5/6 bg-gray-800 rounded animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 w-1/3 bg-gray-700 rounded animate-pulse" />
+              <div className="h-4 w-full bg-gray-800 rounded animate-pulse" />
+              <div className="h-4 w-4/5 bg-gray-800 rounded animate-pulse" />
+            </div>
+            <div className="border-t border-gray-700 pt-4 space-y-2">
+              <div className="h-3 w-1/4 bg-gray-700 rounded animate-pulse" />
+              <div className="h-4 w-full bg-gray-800 rounded animate-pulse" />
+              <div className="h-4 w-full bg-gray-800 rounded animate-pulse" />
+              <div className="h-4 w-2/3 bg-gray-800 rounded animate-pulse" />
+            </div>
+          </>
         )}
 
         {error && (
@@ -84,11 +103,18 @@ export default function DetailPanel({ zone, loading, error, onClose }: DetailPan
             </div>
 
             <div className="border-t border-gray-700 pt-4">
-              <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">AI Summary</h3>
+              <div className="flex items-center gap-1.5 mb-3">
+                <Sparkles size={13} className="text-violet-400" />
+                <h3 className="text-xs font-semibold uppercase text-violet-400">Gemini Summary</h3>
+              </div>
               {zone.gemini_summary ? (
-                <p className="text-sm text-gray-300 leading-relaxed">{zone.gemini_summary}</p>
+                <div className="rounded-lg border border-violet-800/50 bg-violet-950/30 p-3">
+                  <p className="text-sm text-gray-200 leading-relaxed">{zone.gemini_summary}</p>
+                </div>
               ) : (
-                <p className="text-sm text-gray-600 italic">Summary not yet available.</p>
+                <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+                  <p className="text-sm text-gray-500 italic">No summary available for this zone.</p>
+                </div>
               )}
             </div>
           </>
