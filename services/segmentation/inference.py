@@ -60,7 +60,7 @@ MASK_DIR = REPO_ROOT / "data" / "processed" / "segmentation_masks"
 MODEL_ID = "jgerbscheid/segformer_b1-nlver_finetuned-1024-1024"
 
 # Demo AOI default (Parkdale / Liberty Village)
-DEFAULT_AOI_BBOX = "-79.4071,43.6354,-79.3821,43.6534"  # WGS84: min_lon,min_lat,max_lon,max_lat
+DEFAULT_AOI_BBOX = "-79.4071,43.6354,-79.3821,43.6624"  # WGS84: min_lon,min_lat,max_lon,max_lat
 
 # Dutch labels (this model) + English fallbacks -> our schema field names
 LABEL_TO_FIELD: dict[str, str] = {
@@ -346,6 +346,6 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="Dry run with synthetic tile")
     parser.add_argument("--aoi-bbox", type=str, default=DEFAULT_AOI_BBOX,
                         help="AOI bbox WGS84: min_lon,min_lat,max_lon,max_lat")
-    parser.add_argument("--limit", type=int, default=200, help="Max tiles to process")
+    parser.add_argument("--limit", type=int, default=600, help="Max tiles to process")
     args = parser.parse_args()
     main(test_mode=args.test, aoi_bbox=args.aoi_bbox, limit=args.limit)

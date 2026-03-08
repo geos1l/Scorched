@@ -8,3 +8,4 @@ __pycache__/
 # Raw source data — too large for git, re-downloadable
 data/raw/
 cache/
+data/raw/landsat/toronto_landsat_composite.tif

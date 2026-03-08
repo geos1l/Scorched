@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GRID_PATH = REPO_ROOT / "data" / "processed" / "toronto_grid.geojson"
 OUT_PATH = REPO_ROOT / "data" / "processed" / "landsat_cell_features.parquet"
 
-AOI_BBOX_WGS84 = (-79.4071, 43.6354, -79.3821, 43.6534)  # min_lon, min_lat, max_lon, max_lat
+AOI_BBOX_WGS84 = (-79.4071, 43.6354, -79.3821, 43.6624)  # min_lon, min_lat, max_lon, max_lat
 
 COLS = ["cell_id", "ndvi_mean", "brightness_mean", "nir_mean", "lst_c", "relative_lst_c"]
 

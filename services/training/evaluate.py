@@ -50,6 +50,7 @@ FEATURE_COLS = [
     "seg_water_pct", "seg_land_pct", "seg_unlabeled_pct",
     "ndvi_mean", "brightness_mean", "nir_mean",
     "gis_building_coverage", "gis_road_coverage", "gis_park_coverage", "water_distance_m",
+    "building_disagreement", "road_disagreement", "green_consensus",
 ]
 TARGET_COL = "relative_lst_c"
 
