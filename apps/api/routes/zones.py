@@ -77,12 +77,15 @@ def get_zone(zone_id: str, request: Request):
     summary = str(row.gemini_summary) if hasattr(row, "gemini_summary") and pd.notna(row.gemini_summary) else ""
 
     if not summary:
-        summary = generate_zone_summary({
-            "severity": row.severity,
-            "mean_relative_heat": mrh,
-            "top_contributors": contributors,
-            "top_recommendations": recommendations,
-        })
+        try:
+            summary = generate_zone_summary({
+                "severity": row.severity,
+                "mean_relative_heat": mrh,
+                "top_contributors": contributors,
+                "top_recommendations": recommendations,
+            })
+        except Exception:
+            summary = ""
 
     return {
         "zone_id": row.zone_id,

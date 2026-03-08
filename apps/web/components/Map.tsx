@@ -39,19 +39,22 @@ export default function Map() {
     }
   }, [])
 
-  const handleZoneClick = useCallback(async function handleZoneClick(zoneId: string) {
+  const handleZoneClick = useCallback(async function handleZoneClick(
+    zoneId: string,
+    fallback: Omit<ZoneDetail, 'gemini_summary'>
+  ) {
     setLoading(true)
     setError(null)
     setSelectedZone(null)
 
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://45.63.18.135:8000'
-      const res = await fetch(`${base}/zones/${zoneId}`)
+      const res = await fetch(`/api/backend/zones/${zoneId}`)
       if (!res.ok) throw new Error(`Server returned ${res.status}`)
       const data: ZoneDetail = await res.json()
       setSelectedZone(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load zone')
+    } catch {
+      // Show what we already have from the map layer, just without Gemini summary
+      setSelectedZone({ ...fallback, gemini_summary: '' })
     } finally {
       setLoading(false)
     }
@@ -62,7 +65,7 @@ export default function Map() {
     setError(null)
   }
 
-  const showPanel = selectedZone !== null || loading || error !== null
+  const showPanel = selectedZone !== null || loading
 
   return (
     <div className="relative w-full h-screen">
