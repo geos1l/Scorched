@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import ZoneLayer from './ZoneLayer'
@@ -38,7 +38,7 @@ export default function Map() {
     }
   }, [])
 
-  async function handleZoneClick(zoneId: string) {
+  const handleZoneClick = useCallback(async function handleZoneClick(zoneId: string) {
     setLoading(true)
     setError(null)
     setSelectedZone(null)
@@ -54,7 +54,7 @@ export default function Map() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   function handleClose() {
     setSelectedZone(null)
