@@ -13,7 +13,7 @@
   "landsat_collection": "LANDSAT/LC08/C02/T1_L2",
   "composite_year": 2023,
   "composite_months": [6, 7, 8],
-  "segformer_model": "jgerbscheid/segformer_b1-nlver_finetuned-1024-102",
+  "segformer_model": "jgerbscheid/segformer_b1-nlver_finetuned-1024-1024",
   "seg_classes": ["buildings", "road/pavement", "vegetation", "water"],
   "severity_thresholds": {
     "extreme": 5.0,

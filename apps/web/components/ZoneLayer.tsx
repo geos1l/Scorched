@@ -58,18 +58,30 @@ export default function ZoneLayer({ map, onZoneClick }: ZoneLayerProps) {
         if (zoneId) onZoneClick(zoneId)
       }
 
+      const handleMouseEnter = () => { map.getCanvas().style.cursor = 'pointer' }
+      const handleMouseLeave = () => { map.getCanvas().style.cursor = '' }
+
       map.on('click', 'zones-fill', handleClick)
-      map.on('mouseenter', 'zones-fill', () => { map.getCanvas().style.cursor = 'pointer' })
-      map.on('mouseleave', 'zones-fill', () => { map.getCanvas().style.cursor = '' })
+      map.on('mouseenter', 'zones-fill', handleMouseEnter)
+      map.on('mouseleave', 'zones-fill', handleMouseLeave)
+
+      cleanup = () => {
+        map.off('click', 'zones-fill', handleClick)
+        map.off('mouseenter', 'zones-fill', handleMouseEnter)
+        map.off('mouseleave', 'zones-fill', handleMouseLeave)
+        if (map.getLayer('zones-fill')) map.removeLayer('zones-fill')
+        if (map.getLayer('zones-outline')) map.removeLayer('zones-outline')
+        if (map.getSource('zones')) map.removeSource('zones')
+      }
     }
+
+    let cleanup: (() => void) | undefined
 
     addLayers().catch(console.error)
 
     return () => {
       mounted = false
-      if (map.getLayer('zones-fill')) map.removeLayer('zones-fill')
-      if (map.getLayer('zones-outline')) map.removeLayer('zones-outline')
-      if (map.getSource('zones')) map.removeSource('zones')
+      cleanup?.()
     }
   }, [map, onZoneClick])
 
