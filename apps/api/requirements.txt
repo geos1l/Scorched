@@ -9,3 +9,7 @@ scikit-learn
 matplotlib
 python-dotenv
 openai
+httpx
+pytest
+pytest-asyncio
+python-multipart
