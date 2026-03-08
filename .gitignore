@@ -5,3 +5,5 @@ config/gee_service_account.json
 .venv
 __pycache__/
 *.pyc
+# Raw source data — too large for git, re-downloadable
+data/raw/

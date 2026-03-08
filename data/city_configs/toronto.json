@@ -11,7 +11,7 @@
   },
   "sentinel2_collection": "COPERNICUS/S2_SR_HARMONIZED",
   "landsat_collection": "LANDSAT/LC08/C02/T1_L2",
-  "composite_year": 2023,
+  "composite_year": 2024,
   "composite_months": [6, 7, 8],
   "segformer_model": "jgerbscheid/segformer_b1-nlver_finetuned-1024-1024",
   "seg_classes": ["buildings", "road/pavement", "vegetation", "water"],
