@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+geopandas
+pandas
+pyarrow
+shapely
+xgboost
+scikit-learn
+matplotlib
+python-dotenv
