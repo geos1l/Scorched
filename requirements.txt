@@ -1,0 +1,13 @@
+earthengine-api
+geopandas
+pyogrio
+pyproj
+shapely
+pandas
+numpy
+pyarrow
+scikit-learn
+xgboost
+requests
+boto3
+python-dotenv

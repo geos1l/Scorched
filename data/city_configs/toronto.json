@@ -9,6 +9,13 @@
     "min_lat": 43.5810,
     "max_lat": 43.8555
   },
+  "demo_aoi": {
+    "min_lon": -79.4071,
+    "min_lat": 43.6354,
+    "max_lon": -79.3821,
+    "max_lat": 43.6624
+  },
+  "tile_cap": 600,
   "sentinel2_collection": "COPERNICUS/S2_SR_HARMONIZED",
   "landsat_collection": "LANDSAT/LC08/C02/T1_L2",
   "composite_year": 2024,
