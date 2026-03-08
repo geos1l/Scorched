@@ -14,10 +14,15 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 import geopandas as gpd
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load .env from repo root so GEMINI_API_KEY etc. are available before routes (e.g. gemini) import
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from apps.api.routes import cities, zones, cells
 
