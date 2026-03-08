@@ -59,6 +59,9 @@ load_dotenv(REPO_ROOT / ".env")
 MASK_DIR = REPO_ROOT / "data" / "processed" / "segmentation_masks"
 MODEL_ID = "jgerbscheid/segformer_b1-nlver_finetuned-1024-1024"
 
+# Demo AOI default (Parkdale / Liberty Village)
+DEFAULT_AOI_BBOX = "-79.4071,43.6354,-79.3821,43.6534"  # WGS84: min_lon,min_lat,max_lon,max_lat
+
 # Dutch labels (this model) + English fallbacks -> our schema field names
 LABEL_TO_FIELD: dict[str, str] = {
     # Dutch labels (jgerbscheid model trained on Dutch aerial imagery)
@@ -219,7 +222,35 @@ def run_test(model, processor, class_map, device):
 # Main
 # ---------------------------------------------------------------------------
 
-def main(test_mode: bool = False) -> None:
+def filter_tiles_to_aoi(tile_index: dict, aoi_bbox_wgs84: str, limit: int) -> dict:
+    """
+    Filter tile_index to tiles intersecting the AOI bbox, capped at limit.
+    aoi_bbox_wgs84: "min_lon,min_lat,max_lon,max_lat" in WGS84
+    Tile bounds in tile_index are in EPSG:3347 — convert AOI to EPSG:3347 first.
+    """
+    from pyproj import Transformer
+    from shapely.geometry import box
+
+    min_lon, min_lat, max_lon, max_lat = map(float, aoi_bbox_wgs84.split(","))
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:3347", always_xy=True)
+    sw_x, sw_y = transformer.transform(min_lon, min_lat)
+    ne_x, ne_y = transformer.transform(max_lon, max_lat)
+    aoi_box = box(sw_x, sw_y, ne_x, ne_y)
+
+    filtered = {}
+    for name, meta in tile_index.items():
+        minx, miny, maxx, maxy = meta["bounds"]
+        tile_box = box(minx, miny, maxx, maxy)
+        if aoi_box.intersects(tile_box):
+            filtered[name] = meta
+        if len(filtered) >= limit:
+            break
+
+    log.info("AOI filter: %d tiles selected (limit=%d)", len(filtered), limit)
+    return filtered
+
+
+def main(test_mode: bool = False, aoi_bbox: str = DEFAULT_AOI_BBOX, limit: int = 200) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     log.info("Device: %s", device)
 
@@ -235,7 +266,10 @@ def main(test_mode: bool = False) -> None:
 
     log.info("Downloading tile_index.json from bucket %s...", bucket)
     tile_index: dict = json.loads(download_from_bucket(s3, "tile_index.json"))
-    log.info("tile_index.json loaded: %d tiles", len(tile_index))
+    log.info("tile_index.json loaded: %d tiles total", len(tile_index))
+
+    # Filter to AOI
+    tile_index = filter_tiles_to_aoi(tile_index, aoi_bbox, limit)
 
     MASK_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -287,6 +321,7 @@ def main(test_mode: bool = False) -> None:
             }
             log.info("  Sample class distribution: %s", dist)
 
+    # Write mask_index.json after every tile so partial runs are usable
     mask_index_path = MASK_DIR / "mask_index.json"
     with open(mask_index_path, "w") as f:
         json.dump(mask_index, f, indent=2)
@@ -302,5 +337,8 @@ def main(test_mode: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Dry run with synthetic tile")
+    parser.add_argument("--aoi-bbox", type=str, default=DEFAULT_AOI_BBOX,
+                        help="AOI bbox WGS84: min_lon,min_lat,max_lon,max_lat")
+    parser.add_argument("--limit", type=int, default=200, help="Max tiles to process")
     args = parser.parse_args()
-    main(test_mode=args.test)
+    main(test_mode=args.test, aoi_bbox=args.aoi_bbox, limit=args.limit)
