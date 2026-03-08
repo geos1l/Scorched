@@ -9,3 +9,5 @@ __pycache__/
 data/raw/
 cache/
 data/raw/landsat/toronto_landsat_composite.tif
+data/processed/feature_importance.png
+data/processed/predictions.parquet
