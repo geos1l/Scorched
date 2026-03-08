@@ -10,13 +10,33 @@ CanCool AI is a geospatial ML system that identifies heat-prone urban zones acro
 
 ---
 
+## DEMO AOI (area of interest) — MVP SCOPE (READ THIS FIRST)
+
+> **Time constraint: ~8 hours remaining.** Full-city Toronto pipelines (68k tiles, 709k road geometries) take hours. The MVP runs the entire pipeline end-to-end on a **small demo region** so we can show seg → GIS → ML → zones → API → frontend working.
+
+**Demo AOI center:** 43.6444°N, 79.3946°W (Parkdale / Liberty Village — dense built + parks + water proximity = good heat contrast)
+**Demo AOI bbox (WGS84):** min_lon -79.4071, min_lat 43.6354, max_lon -79.3821, max_lat 43.6534 (~2 km × 2 km)
+**Grid:** Full `toronto_grid.geojson` is kept on disk. All scripts **filter to cells inside the demo AOI bbox**.
+**Tile cap for inference:** 200 tiles max.
+**GIS:** `gis_cell_features.parquet` already exists for all 68k cells (completed). Filter to AOI cell_ids.
+**Landsat:** Stubbed for MVP (plausible synthetic values for AOI cells). Real GEE pipeline is future work.
+**Frontend:** Map auto-zooms to demo AOI on first load; user can still pan/zoom freely.
+
+### What this means for each person
+
+- **Georgio:** Add `--limit` to inference.py; run inference on 200 AOI tiles; aggregate; build stub landsat parquet; merge features; evaluate; zone_aggregation; API; deploy.
+- **Julie:** features.py + train.py + recommendations.py all operate on the AOI subset. No full-city runs needed.
+- **Farill:** Swap dummy-zones.geojson for real zones from AOI; auto-zoom map to AOI; wire API; Gemini; polish.
+
+---
+
 ## Team & Role Ownership
 
 | Person | Primary Role | Owns |
 |--------|-------------|------|
 | **Farill** | Frontend + Gemini API + API integration | `apps/web/`, `apps/api/gemini.py`, Gemini endpoint in `apps/api/routes/zones.py` |
-| **Julie** | GEE data pull + ML co-lead + Recommendations | `services/preprocessing/gee_pipeline.py`, `services/preprocessing/grid.py`, `services/segmentation/inference_prep.py`, `services/training/train.py`, `services/zoning/recommendations.py` |
-| **Georgio** | Backend + GIS + ML co-lead + Segmentation inference | `apps/api/`, `services/preprocessing/gis_pipeline.py`, `services/segmentation/inference.py`, `services/segmentation/aggregate.py`, `services/training/evaluate.py`, `services/zoning/zone_aggregation.py` |
+| **Julie** | GEE data pull + ML co-lead + Recommendations | `services/preprocessing/gee_pipeline.py`, `services/preprocessing/grid.py`, `services/preprocessing/statcan_buildings.py`, `services/training/train.py`, `services/zoning/recommendations.py` |
+| **Georgio** | Backend + GIS + ML co-lead + Segmentation inference | `apps/api/`, `services/preprocessing/tile_uploader.py`, `services/preprocessing/gis_pipeline.py`, `services/segmentation/inference.py`, `services/segmentation/aggregate.py`, `services/training/evaluate.py`, `services/zoning/zone_aggregation.py` |
 
 **Rule:** Do not modify files outside your ownership without telling the team first.
 
@@ -26,16 +46,16 @@ CanCool AI is a geospatial ML system that identifies heat-prone urban zones acro
 
 ```
 Segmentation model  : SegFormer (HuggingFace: jgerbscheid/segformer_b1-nlver_finetuned-1024-1024) — pretrained aerial-image checkpoint, inference-only
-Segmentation imagery: High-resolution Canadian orthophoto/aerial imagery for Toronto (NOT Sentinel-2)
-Thermal imagery     : Google Earth Engine — Landsat Level 2 (thermal/LST branch only)
+Segmentation imagery: ESRI World Imagery MapServer (Toronto Open Data retired) — tiles fetched by tile_uploader.py, stored in Vultr Object Storage bucket "torontotiles" (ewr1); credentials in .env
+Thermal imagery     : Google Earth Engine — Landsat Level 2 (thermal/LST branch only); GEE requires personal OAuth; export goes to Google Drive then manually moved to data/raw/landsat/
 GIS data            : StatCan Open Database of Buildings + OSM (roads, parks, water)
 ML model            : XGBoost Regressor
 Backend             : FastAPI (Python)
 Frontend            : Next.js + TypeScript
 Map rendering       : Mapbox GL JS
-Storage             : GeoJSON + Parquet (MVP)
+Storage             : GeoJSON + Parquet (MVP); orthophoto tiles + tile_index.json live in Vultr bucket not local
 AI explanations     : Gemini API
-Deployment          : Vultr (backend) + Vercel (frontend)
+Deployment          : Vultr (backend + object storage) + Vercel (frontend)
 ```
 
 ---
@@ -45,6 +65,8 @@ Deployment          : Vultr (backend) + Vercel (frontend)
 ```
 HackCanada-2026/
 ├── CONTEXT.md                          <- this file
+├── scripts/
+│   └── vultr_setup.sh                  <- Vultr bucket setup script (Georgio)
 ├── apps/
 │   ├── web/                            <- Next.js frontend (Farill)
 │   │   ├── components/
@@ -63,12 +85,13 @@ HackCanada-2026/
 │           └── cells.py                <- GET /cells debug endpoint (Georgio)
 ├── services/
 │   ├── segmentation/
-│   │   ├── inference_prep.py           <- GEE tile pull + preprocessing for SegFormer (Julie)
-│   │   ├── inference.py                <- SegFormer batch inference runner (Georgio)
+│   │   ├── inference.py                <- SegFormer batch inference runner, reads from Vultr bucket (Georgio)
 │   │   └── aggregate.py                <- Tile masks -> cell percentages (Georgio)
 │   ├── preprocessing/
+│   │   ├── tile_uploader.py            <- Fetch ESRI tiles, upload to Vultr bucket, build tile_index.json (Georgio)
+│   │   ├── statcan_buildings.py        <- StatCan ODB buildings -> gis_building_coverage (Julie)
 │   │   ├── gee_pipeline.py             <- GEE Landsat pull + compositing (Julie)
-│   │   ├── gis_pipeline.py             <- StatCan ODB + OSM processing (Georgio)
+│   │   ├── gis_pipeline.py             <- OSM roads/parks/water + merge with StatCan (Georgio)
 │   │   └── grid.py                     <- City grid generation (Julie)
 │   ├── training/
 │   │   ├── features.py                 <- Merge all branches -> features.parquet (Julie)
@@ -78,7 +101,8 @@ HackCanada-2026/
 │       ├── zone_aggregation.py         <- Hot cell clustering -> zones (Georgio)
 │       └── recommendations.py          <- Contributor tags + rule engine (Julie)
 ├── data/
-│   ├── raw/                            <- Downloaded source data (do not edit)
+│   ├── raw/
+│   │   └── landsat/                    <- GeoTIFFs exported from GEE via Google Drive (Julie)
 │   ├── processed/
 │   │   ├── toronto_grid.geojson                   <- OUTPUT of Phase 1 (Julie)
 │   │   ├── segmentation_cell_features.parquet     <- OUTPUT of Phase 2 (Georgio)
@@ -91,6 +115,9 @@ HackCanada-2026/
 │       └── toronto.json                <- Phase 0 locked config
 └── models/
     └── xgboost_heat_model.json         <- OUTPUT of Phase 7 (Julie)
+```
+
+> NOTE: Orthophoto tiles and tile_index.json live in Vultr Object Storage bucket "torontotiles" (ewr1), NOT in data/raw/orthophoto_tiles/. See changes.md for current build vs plan.
 ```
 
 ---
@@ -201,236 +228,143 @@ POST /selection
 
 ---
 
-## Build Phases — Ownership & Task Split
+## Build Phases — MVP Sprint (Demo AOI Scoped)
 
-### Phase 0 — Lock Config (All Three, Together, Before Any Code)
-- Commit `data/city_configs/toronto.json` with locked values above
-- One person commits, everyone pulls before writing any code
+> All phases below are scoped to the **demo AOI** (~2 km × 2 km, ~400 cells, 200 tiles). Full-city runs are future work.
+
+### Phases 0–1: DONE
+- toronto.json committed, repo structure created, toronto_grid.geojson generated (68,394 cells).
+- statcan_buildings.parquet completed.
+- gis_cell_features.parquet completed for all 68k cells.
+- Tile upload to Vultr in progress (~75% done, ~51k of 68k); continues in background.
 
 ---
 
-### Phase 1 — Repo Structure & City Grid
-
-**Julie**
-- Write `services/preprocessing/grid.py`
-- Load Toronto boundary -> project to EPSG:3347 -> generate 100m grid -> clip to boundary -> assign stable cell_ids
-- Output: `data/processed/toronto_grid.geojson`
+### Phase 2 (MVP) — Segmentation on Demo AOI
 
 **Georgio**
-- Create full monorepo folder structure (all dirs and placeholder files listed in repo structure above)
-- Commit initial structure so Julie and Farill can branch off immediately
+- Add `--limit N` and `--aoi-bbox` flags to `inference.py` so it only processes tiles inside the demo AOI, capped at 200
+- Run inference on ~200 AOI tiles from Vultr bucket → masks to `data/processed/segmentation_masks/`
+- Run `aggregate.py` → `segmentation_cell_features.parquet` (68k rows; only AOI cells have non-NaN seg data)
 
-> MERGE POINT: toronto_grid.geojson must exist before Phase 2 (segmentation alignment), Phase 3 (GIS cell join), Phase 4 (Landsat cell join), and Phase 5 (frontend dummy data). Complete Phase 1 before anything else.
+**Estimated time:** ~1–2 h on CPU for 200 tiles. Account for this in your project planning to assign up tasks during that wait time.
 
 ---
 
-### Phase 2 — Segmentation Pipeline (Branch A)
+### Phase 3 (MVP) — GIS: ALREADY DONE
 
-**Model:** `jgerbscheid/segformer_b1-nlver_finetuned-1024-1024` — pretrained aerial-image SegFormer, inference-only (no training or fine-tuning for MVP)
-**Imagery:** High-resolution Canadian orthophoto/aerial imagery for Toronto (NOT Sentinel-2 from GEE)
-**Primary classes:** buildings, roads/pavement, vegetation, water. GIS cross-checks and gap-fills missing surface categories.
-**Note:** One good orthophoto vintage is sufficient — temporal diversity matters more for Landsat than for orthophotos.
+`gis_cell_features.parquet` exists for all 68,394 cells. For the MVP, filter to AOI cell_ids when building features.parquet. No re-run needed.
 
-**Julie**
-- Write `services/segmentation/inference_prep.py`
-- Source high-resolution orthophoto/aerial imagery for Toronto (e.g. City of Toronto open orthophoto tiles or equivalent Canadian source)
-- Tile imagery to match model input spec, preprocess (resize + normalize per model card)
-- Output: preprocessed tiles ready for inference in `data/raw/orthophoto_tiles/`, consistent PNG naming: `tile_{row}_{col}.png`
+---
+
+### Phase 4 (MVP) — Landsat: STUB
 
 **Georgio**
-- Write `services/segmentation/inference.py` — load `jgerbscheid/segformer_b1-nlver_finetuned-1024-1024`, run batch inference on preprocessed tiles, output class masks to `data/processed/segmentation_masks/`
-- Write `services/segmentation/aggregate.py` — georeference masks to EPSG:3347, aggregate tile masks → compute class % per grid cell using toronto_grid.geojson
-- For seg_land_pct and seg_unlabeled_pct: derive as residual if model does not output these classes directly; GIS will fill gaps
-- Output: `data/processed/segmentation_cell_features.parquet`
+- Write a small script to generate `landsat_cell_features.parquet` with **stub values** for AOI cells only:
+  - `ndvi_mean`: random 0.15–0.45 (plausible Toronto summer range)
+  - `brightness_mean`: random 0.10–0.30
+  - `nir_mean`: random 0.15–0.35
+  - `lst_c`: random 28–42°C (Toronto summer surface temps)
+  - `relative_lst_c`: `lst_c - median(lst_c)` across AOI cells (centered around 0)
+- This is the ML training label. Stub values let the pipeline run; real GEE export replaces this post-demo.
 
-> MERGE POINT: Julie finishes tile preprocessing first, then hands off to Georgio for inference and aggregation. Coordinate on tile format (PNG, consistent naming) before starting.
-
----
-
-### Phase 3 — GIS Data Pipeline (Branch C)
-
-**Julie**
-- Download StatCan Open Database of Buildings for Toronto
-- Reproject building footprints to EPSG:3347, clip to Toronto boundary
-- Compute `gis_building_coverage` per grid cell
-- Output: `data/processed/statcan_buildings.parquet` — hand off to Georgio for final merge
-
-**Georgio**
-- Download OSM layers via osmnx: roads, parks, water
-- Reproject and clip all layers to EPSG:3347 and Toronto boundary
-- Compute `gis_road_coverage`, `gis_park_coverage`, `water_distance_m` per grid cell
-- Merge Julie's statcan_buildings.parquet with OSM features
-- Output: `data/processed/gis_cell_features.parquet`
-
-> MERGE POINT: Julie sends statcan_buildings.parquet to Georgio who runs the final merge. Agree on column names before starting — they must match the Cell Schema above exactly.
+**Estimated time:** ~15 min to write + run.
 
 ---
 
-### Phase 4 — Thermal Data Pipeline (Branch B)
-
-**Julie**
-- Write `services/preprocessing/gee_pipeline.py`
-- Pull Landsat Level 2 from GEE for Toronto (Jun-Aug 2024, low cloud cover, 3-8 scenes)
-- Extract bands: LST, NIR, SWIR, Red, Green, Blue + QA mask
-- Apply cloud mask, composite scenes using median
-- Export composited rasters as GeoTIFF to `data/raw/landsat/` in EPSG:3347
-
-**Georgio**
-- Aggregate composited Landsat GeoTIFFs to 100m grid cells using toronto_grid.geojson
-- Compute per cell: `ndvi_mean`, `brightness_mean`, `nir_mean`, `lst_c`
-- Compute city-wide median LST
-- Compute `relative_lst_c = cell_lst - city_median_lst` <- this is the ML label
-- Output: `data/processed/landsat_cell_features.parquet`
-
-> MERGE POINT: Julie exports GeoTIFFs to data/raw/landsat/, Georgio aggregates to cells. Coordinate on GeoTIFF CRS (EPSG:3347) and file naming before starting.
-
----
-
-### Phase 5 — Frontend Scaffold (Parallel — No Dependencies)
-
-**Farill** (entire phase, runs fully parallel to Phases 2-4)
-- Initialize Next.js + TypeScript in `apps/web/`
-- Install: mapbox-gl, tailwindcss, shadcn/ui
-- Create Mapbox account, store token in `.env.local`
-- Build `Map.tsx`: dark style, centered on Toronto [43.6532, -79.3832], zoom 11
-- Build `ZoneLayer.tsx`: loads zones from dummy zones.geojson, colors by severity
-  - extreme: #C0392B | high: #E67E22 | moderate: #F1C40F | low: #27AE60
-- Build `DetailPanel.tsx`: renders on zone click
-  - Shows: severity badge, mean_relative_heat, top_contributors list, top_recommendations list, gemini_summary placeholder
-- Wire click handler: zone click -> fetch GET /zones/{zone_id} -> populate DetailPanel
-- Add loading states and error handling throughout
-
-> MERGE POINT: After Phase 8 (Backend API) is complete, Farill updates API base URL from dummy data to live FastAPI endpoints and runs integration tests.
-
----
-
-### Phase 6 — Feature Engineering (Merge of Branches A + B + C)
-
-> INPUT REQUIRED: segmentation_cell_features.parquet (Phase 2) + gis_cell_features.parquet (Phase 3) + landsat_cell_features.parquet (Phase 4) must all exist before this phase starts.
-
-**Julie**
-- Write `services/training/features.py`
-- Load all three parquet files, join on cell_id
-- Compute fusion features:
-  - `building_disagreement = abs(seg_building_pct - gis_building_coverage)`
-  - `road_disagreement = abs(seg_road_pct - gis_road_coverage)`
-  - `green_consensus = mean(seg_vegetation_pct, gis_park_coverage)`
-
-**Georgio**
-- Validate join completeness — every cell_id must appear in all three parquet files
-- Handle missing values: flag and impute cells with incomplete data
-- Output final merged file: `data/processed/features.parquet`
-
-> MERGE POINT: Julie writes join and fusion logic, Georgio validates and outputs final features.parquet. Both must confirm schema matches Cell Schema contract exactly before Phase 7 starts.
-
----
-
-### Phase 7 — Model Training & Validation
-
-**Julie**
-- Write `services/training/train.py`
-- Load features.parquet, define feature columns and target (relative_lst_c)
-- Split by scene date — hold out latest scenes as test set to avoid temporal leakage
-- Train XGBoost Regressor
-- Save model artifact: `models/xgboost_heat_model.json`
-
-**Georgio**
-- Write `services/training/evaluate.py`
-- Load model and held-out test set, compute MAE, RMSE, R²
-- Generate and save feature importance chart: `data/processed/feature_importance.png`
-- Run predictions on all cells
-- Compute severity buckets from predicted relative heat:
-  - extreme: > +5°C | high: +2 to +5°C | moderate: 0 to +2°C | low: < 0°C
-- Output: `data/processed/predictions.parquet` with severity column appended
-
-> MERGE POINT: Julie outputs trained model, Georgio loads it for evaluation and produces predictions.parquet. Final predictions.parquet feeds Phase 8 (API) and Phase 9 (Zone Aggregation) simultaneously.
-
----
-
-### Phase 8 — Backend API
-
-**Georgio**
-- Initialize FastAPI app in `apps/api/main.py`
-- Add CORS middleware (allow Next.js frontend origin)
-- Load zones.geojson and predictions.parquet at startup
-- Implement all routes except Gemini endpoint:
-  - `apps/api/routes/cities.py` -> GET /cities
-  - `apps/api/routes/zones.py` -> GET /zones, GET /zones/{zone_id} (without gemini_summary for now)
-  - `apps/api/routes/cells.py` -> GET /cells
-  - POST /selection in zones.py
-- Deploy to Vultr — backend must be publicly accessible via URL
+### Phase 5 (MVP) — Frontend: MOSTLY DONE + updates
 
 **Farill**
-- Write `apps/api/gemini.py` — Gemini API call function
-- Add gemini_summary generation to GET /zones/{zone_id}
-- Prompt template: structured zone data -> 2-3 sentence plain-English city planner explanation
-- Test Gemini responses across all severity types
-
-> MERGE POINT: Georgio builds and deploys base API first. Farill plugs in gemini.py after base routes are working. Once both are done, Farill updates frontend base URL from dummy data to live Vultr endpoint.
+- Map, ZoneLayer, DetailPanel already built with dummy data
+- **Update:** Map auto-zooms to demo AOI bbox on first load (`map.fitBounds([[-79.4071, 43.6354], [-79.3821, 43.6534]])`)
+- **Update:** When real zones.geojson arrives from Georgio, swap dummy-zones.geojson for it
+- **Update:** Heat gradient coloring on zones (existing severity colors work; optionally add continuous gradient from mean_relative_heat)
 
 ---
 
-### Phase 9 — Zone Aggregation & Recommendation Engine
-
-> INPUT REQUIRED: predictions.parquet with severity column (Phase 7) must exist before this phase starts.
-
-**Georgio**
-- Write `services/zoning/zone_aggregation.py`
-- Load predictions.parquet, identify cells with severity = high or extreme
-- Merge adjacent hot cells using GeoPandas dissolve
-- Assign stable zone_ids, compute mean_relative_heat and severity per zone
+### Phase 6 (MVP) — Feature Engineering (AOI subset)
 
 **Julie**
-- Write `services/zoning/recommendations.py`
-- Derive top_contributors per zone using threshold rules:
-  - seg_vegetation_pct < 0.10 AND gis_park_coverage < 0.05 -> "low vegetation"
-  - seg_road_pct > 0.35 OR gis_road_coverage > 0.40 -> "road-dominant impervious surface"
-  - seg_building_pct > 0.40 AND gis_building_coverage > 0.35 -> "dense built form"
-  - water_distance_m > 1000 -> "minimal water proximity"
-- Assign top 3 interventions per zone:
-  - high road + low vegetation -> cool pavement, street trees, shade structures
-  - high building + dense footprint -> cool roofs, green roofs, targeted canopy
-  - high open lot + low vegetation -> permeable landscaping, tree canopy, shade structures
-- Output: `data/processed/zones.geojson` (gemini_summary field left empty — Farill fills in Phase 10)
+- `features.py`: Load all three parquets, **inner join on cell_id** (only AOI cells that have seg + gis + landsat data survive)
+- Compute fusion features: building_disagreement, road_disagreement, green_consensus
+- Pass to Georgio for validation
 
-> MERGE POINT: Georgio outputs zone polygons, Julie adds contributors and recommendations. Julie's recommendations.py takes Georgio's zone output as input. Final zones.geojson feeds Phase 8 backend and Phase 10.
+**Georgio**
+- Validate + impute + output `features.parquet`
+
+**Estimated time:** ~5–10 min.
 
 ---
 
-### Phase 10 — Gemini Integration
+### Phase 7 (MVP) — Model Training (AOI subset)
 
-> INPUT REQUIRED: zones.geojson (Phase 9) + FastAPI running (Phase 8)
+**Julie**
+- `train.py`: Load features.parquet (~200–400 rows), train XGBoost on AOI cells
+- Target: `relative_lst_c`
+- Simple train/test split (e.g. 80/20 random — no temporal leakage concern with stub labels)
+- Save model: `models/xgboost_heat_model.json`
 
-**Farill** (entire phase)
-- Finalize `apps/api/gemini.py` with real zones data
-- For each zone: build structured prompt -> call Gemini API -> store gemini_summary
-- Two options, pick based on time:
-  - Option A (simpler): precompute all summaries, bake into zones.geojson
-  - Option B (better): generate on-demand inside GET /zones/{zone_id}
-- Render gemini_summary in `DetailPanel.tsx`
+**Georgio**
+- `evaluate.py`: Load model, predict on all AOI cells, compute severity buckets, output `predictions.parquet`
+
+**Estimated time:** ~5 min total.
 
 ---
 
-### Phase 11 — Integration, Polish & Submission (All Three)
+### Phase 8 (MVP) — Backend API
+
+**Georgio**
+- FastAPI in `apps/api/main.py`, CORS, load zones.geojson + predictions.parquet at startup
+- Implement: GET /cities, GET /zones, GET /zones/{zone_id}, GET /cells
+- Deploy to Vultr, share URL with Farill
 
 **Farill**
-- Verify all API endpoints wired correctly in frontend
-- Add segmentation preview card in DetailPanel: RGB tile + colored mask overlay
-- Test all zone click interactions end-to-end
-- Write README.md
-- Record demo video
-- Submit Devpost — check prize tracks: Gemini API, Vultr, Stan
+- Write `apps/api/gemini.py`, add Gemini call to GET /zones/{zone_id}
+- Render gemini_summary in DetailPanel
 
-**Julie**
-- Validate model metrics are presentable — add MAE/RMSE/R² to README
-- Export feature importance chart for slides and README
-- Confirm segmentation masks accessible via API preview endpoint
+**Estimated time:** ~1–2 h.
+
+---
+
+### Phase 9 (MVP) — Zone Aggregation + Recommendations (AOI subset)
 
 **Georgio**
-- Confirm Vultr deployment is stable and API publicly accessible
+- `zone_aggregation.py`: Load predictions.parquet, filter high/extreme cells, dissolve adjacent → zone polygons
+- Pass to Julie
+
+**Julie**
+- `recommendations.py`: Add top_contributors + top_recommendations per zone using threshold rules
+- Output: `data/processed/zones.geojson`
+
+**Estimated time:** ~15–30 min.
+
+---
+
+### Phase 10 (MVP) — Gemini Integration
+
+**Farill**
+- Wire Gemini summaries (on-demand per zone click, or precomputed at startup)
+- Render in DetailPanel
+
+**Estimated time:** ~30 min.
+
+---
+
+### Phase 11 (MVP) — Integration, Polish & Submission
+
+**Farill**
+- Verify API endpoints wired in frontend
+- Segmentation preview card in DetailPanel (RGB tile + colored mask overlay) — if time allows
+- README, demo video, Devpost submission
+
+**Julie**
+- Validate model metrics for README
+- Feature importance chart for pitch
+
+**Georgio**
+- Confirm Vultr deployment stable
 - Make GitHub repo public before 10AM Sunday
-- Verify no commits exist from before hackathon start
-- Test POST /selection if drag-rectangle was implemented
+- Verify no pre-hackathon commits
 
 ---
 
@@ -452,10 +386,18 @@ Cut in this order if time is short. Vultr is non-negotiable — do not cut.
 1. PostGIS — stay on GeoJSON + Parquet only
 2. POST /selection drag-rectangle endpoint
 3. Gemini API summaries (lose Gemini prize)
-4. Reduce scope to downtown Toronto only
+4. Segmentation preview card in DetailPanel
 5. Last resort only: drop supervised ML, use rule-based heat scoring — SegFormer CV story still intact
 
 ---
+
+## Future Scaling (post-demo)
+
+- **Full-city Toronto:** Run all pipelines on 68k cells. Tile upload ~75% done; gis_cell_features.parquet already done. Inference + aggregate + real Landsat + full train = the "real" run.
+- **Real Landsat:** Replace stub landsat_cell_features with GEE export + cell aggregation
+- **Optimize gis_pipeline:** Replace unary_union + 68k intersection with overlay/sjoin (minutes instead of hours)
+- **Multi-city:** city_config.json pattern already supports this
+- **PostGIS / live heat updates / Digital Twin / custom segmentation model** — see Non-MVP Scalability Notes below
 
 ## Non-MVP Scalability Notes
 

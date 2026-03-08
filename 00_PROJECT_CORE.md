@@ -9,15 +9,26 @@ CanCool AI is a geospatial ML system that identifies heat-prone urban zones in T
 
 ---
 
-## MVP Scope
+## Demo AOI (Area of Interest) — MVP Scope
 
-- One city: Toronto
-- 100m x 100m grid cells across the city
-- Supervised XGBoost model predicting relative heat per cell
-- SegFormer segmentation visibly in the pipeline
-- Clickable zone map with severity + contributors + recommendations + Gemini summary
+> **5 hours remain.** Full-city Toronto pipelines take hours. The MVP uses a small demo region so the entire pipeline (seg → GIS → ML → zones → API → frontend) runs end-to-end in time.
+
+**Demo AOI center:** 43.6444°N, 79.3946°W (Parkdale / Liberty Village — mixed built + green + water proximity)
+**Demo AOI bbox (WGS84):** min_lon -79.4071, min_lat 43.6354, max_lon -79.3821, max_lat 43.6534 (~2 km × 2 km)
+**Grid:** Full `toronto_grid.geojson` is kept; all scripts filter to cells inside the demo AOI bbox.
+**Tile cap:** 200 tiles max for SegFormer inference.
+
+### What "MVP" means right now
+
+- One city: Toronto, scoped to **demo AOI only** (~400 cells, 200 tiles)
+- 100m × 100m grid cells (same grid, filtered to AOI)
+- Supervised XGBoost model predicting relative heat per cell (trained on AOI cells)
+- SegFormer segmentation on 200 tiles — seg composition features feed XGBoost
+- GIS features from existing `gis_cell_features.parquet` (full city already computed), filtered to AOI
+- Landsat features **stubbed** for MVP (plausible values for AOI cells); real GEE pipeline is future work
+- Clickable zone map with heat gradient + severity + contributors + recommendations + Gemini summary
 - FastAPI backend deployed on Vultr
-- Next.js + Mapbox GL JS frontend
+- Next.js + Mapbox GL JS frontend, **auto-zooms to demo AOI on load**
 
 ---
 
@@ -134,3 +145,18 @@ POST /selection
 | Georgio | `apps/api/`, `services/preprocessing/gis_pipeline.py`, `services/segmentation/inference.py`, `services/segmentation/aggregate.py`, `services/training/evaluate.py`, `services/zoning/zone_aggregation.py` |
 
 Do not modify files outside your ownership without telling the team first.
+
+---
+
+## Future Scaling (post-demo)
+
+These are not MVP tasks. They are listed here so design decisions don't block them later.
+
+- **Full-city Toronto:** Run all pipelines on 68k cells (tile upload already ~75% done; gis_cell_features.parquet already done for 68k; inference + aggregate + Landsat + train on full set)
+- **Real Landsat:** Replace stub landsat with real GEE export + cell aggregation
+- **Optimize gis_pipeline:** Replace unary_union + 68k intersection with overlay/sjoin approach
+- **Multi-city:** city_config.json pattern already supports this
+- **PostGIS:** Load processed GeoJSON into PostGIS
+- **Dynamic zoning:** Re-run zone_aggregation on new predictions
+- **Digital Twin simulation:** what-if scenarios (add trees → re-predict heat)
+- **Custom segmentation model:** Train on labeled Canadian aerial imagery
