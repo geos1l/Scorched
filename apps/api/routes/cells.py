@@ -35,7 +35,7 @@ def get_cells(request: Request, city_id: str = "toronto"):
     for _, row in grid.iterrows():
         features.append({
             "type": "Feature",
-            "geometry": json.loads(row.geometry.to_json()) if row.geometry else None,
+            "geometry": row.geometry.__geo_interface__ if row.geometry else None,
             "properties": {
                 "cell_id": row.cell_id,
                 "predicted_heat": float(row.predicted_heat) if pd.notna(row.get("predicted_heat")) else None,

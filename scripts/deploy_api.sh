@@ -15,15 +15,22 @@ echo "=== CanCool AI — API Deployment ==="
 # 1. System deps
 apt-get update -y && apt-get install -y python3 python3-venv python3-pip git
 
-# 2. Clone repo
-if [ -d "HackCanada-2026" ]; then
-  echo "Repo exists — pulling latest..."
-  cd HackCanada-2026 && git pull && cd ..
+# 2. Find repo root (allow running from inside repo or from parent)
+if [ -f "apps/api/main.py" ] || [ -f "scripts/deploy_api.sh" ]; then
+  REPO_ROOT="$(pwd)"
+  echo "Already in repo at $REPO_ROOT — pulling latest..."
+  git pull
 else
-  git clone https://github.com/geos1l/HackCanada-2026.git
+  if [ -d "HackCanada-2026" ]; then
+    echo "Repo exists — pulling latest..."
+    cd HackCanada-2026 && git pull && cd ..
+  else
+    git clone https://github.com/geos1l/HackCanada-2026.git
+  fi
+  cd HackCanada-2026
+  REPO_ROOT="$(pwd)"
 fi
-
-cd HackCanada-2026
+cd "$REPO_ROOT"
 
 # 3. Venv + deps
 python3 -m venv .venv

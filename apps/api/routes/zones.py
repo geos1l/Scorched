@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 
 import geopandas as gpd
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from shapely.geometry import shape
@@ -20,18 +21,32 @@ from ..gemini import generate_zone_summary
 router = APIRouter()
 
 
+def _to_list(x):
+    """Ensure value is a JSON-serializable list."""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    if hasattr(x, "tolist"):
+        return x.tolist()
+    return list(x) if not isinstance(x, list) else x
+
+
 def _zone_feature(row) -> dict:
+    mrh = row.get("mean_relative_heat") if hasattr(row, "get") else row.mean_relative_heat
+    if pd.isna(mrh):
+        mrh = None
+    else:
+        mrh = float(mrh)
     return {
         "type": "Feature",
-        "geometry": json.loads(row.geometry.to_json()) if row.geometry else None,
+        "geometry": row.geometry.__geo_interface__ if row.geometry else None,
         "properties": {
             "zone_id": row.zone_id,
             "city_id": row.city_id,
             "severity": row.severity,
-            "mean_relative_heat": float(row.mean_relative_heat),
-            "top_contributors": row.top_contributors if hasattr(row, "top_contributors") else [],
-            "top_recommendations": row.top_recommendations if hasattr(row, "top_recommendations") else [],
-            "gemini_summary": row.gemini_summary if hasattr(row, "gemini_summary") else "",
+            "mean_relative_heat": mrh,
+            "top_contributors": _to_list(row.top_contributors if hasattr(row, "top_contributors") else []),
+            "top_recommendations": _to_list(row.top_recommendations if hasattr(row, "top_recommendations") else []),
+            "gemini_summary": str(row.gemini_summary) if hasattr(row, "gemini_summary") and pd.notna(row.gemini_summary) else "",
         },
     }
 
@@ -55,14 +70,16 @@ def get_zone(zone_id: str, request: Request):
     if match.empty:
         raise HTTPException(status_code=404, detail=f"Zone {zone_id!r} not found")
     row = match.iloc[0]
-    contributors = row.top_contributors if hasattr(row, "top_contributors") else []
-    recommendations = row.top_recommendations if hasattr(row, "top_recommendations") else []
-    summary = row.gemini_summary if (hasattr(row, "gemini_summary") and row.gemini_summary) else ""
+    mrh = row.mean_relative_heat
+    mrh = None if pd.isna(mrh) else float(mrh)
+    contributors = _to_list(row.top_contributors if hasattr(row, "top_contributors") else [])
+    recommendations = _to_list(row.top_recommendations if hasattr(row, "top_recommendations") else [])
+    summary = str(row.gemini_summary) if hasattr(row, "gemini_summary") and pd.notna(row.gemini_summary) else ""
 
     if not summary:
         summary = generate_zone_summary({
             "severity": row.severity,
-            "mean_relative_heat": float(row.mean_relative_heat),
+            "mean_relative_heat": mrh,
             "top_contributors": contributors,
             "top_recommendations": recommendations,
         })
@@ -70,7 +87,7 @@ def get_zone(zone_id: str, request: Request):
     return {
         "zone_id": row.zone_id,
         "severity": row.severity,
-        "mean_relative_heat": float(row.mean_relative_heat),
+        "mean_relative_heat": mrh,
         "top_contributors": contributors,
         "top_recommendations": recommendations,
         "gemini_summary": summary,
