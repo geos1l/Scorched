@@ -21,7 +21,7 @@ def generate_zone_summary(zone_data: dict) -> str:
     Write 2-3 sentences explaining this zone in plain English.
 
     Zone severity: {zone_data['severity']}
-    Mean heat above city median: {zone_data['mean_relative_heat']:.1f}°C
+    Mean heat above city median: {f"{zone_data['mean_relative_heat']:.1f}" if zone_data['mean_relative_heat'] is not None else 'N/A'}°C
     Primary contributors: {', '.join(zone_data['top_contributors'])}
     Recommended interventions: {', '.join(zone_data['top_recommendations'])}
 
@@ -29,7 +29,7 @@ def generate_zone_summary(zone_data: dict) -> str:
     Do not use jargon. Write as if explaining to a non-technical city official.
     """
     response = _get_client().chat.completions.create(
-        model="google/gemini-2.5-flash-preview",
+        model="google/gemini-2.0-flash-001",
         messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content

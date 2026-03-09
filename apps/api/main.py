@@ -10,6 +10,7 @@ USAGE:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Load .env from repo root so GEMINI_API_KEY etc. are available before routes (e.g. gemini) import
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from apps.api.routes import cities, zones, cells
+from apps.api.routes import cities, zones, cells, tiles
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -66,6 +67,13 @@ async def lifespan(app: FastAPI):
         log.warning("toronto_grid.geojson not found — using empty GeoDataFrame")
         app.state.grid_gdf = gpd.GeoDataFrame()
 
+    # Pre-generate segmentation mosaic in a thread so the first HTTP request
+    # is instant (avoids proxy timeout on /tiles/aoi/mosaic).
+    log.info("Pre-generating segmentation mosaic (background thread)...")
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, tiles.pregenerate_mosaic)
+    log.info("Startup complete.")
+
     yield
     log.info("Shutting down.")
 
@@ -82,6 +90,7 @@ app.add_middleware(
 app.include_router(cities.router)
 app.include_router(zones.router)
 app.include_router(cells.router)
+app.include_router(tiles.router, prefix="/tiles", tags=["tiles"])
 
 
 @app.get("/health")

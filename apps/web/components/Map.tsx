@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import ZoneLayer from './ZoneLayer'
+import SegOverlay from './SegOverlay'
 import DetailPanel, { ZoneDetail } from './DetailPanel'
 
 export default function Map() {
@@ -11,6 +12,7 @@ export default function Map() {
   const [selectedZone, setSelectedZone] = useState<ZoneDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSegOverlay, setShowSegOverlay] = useState(true)
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return
@@ -72,8 +74,23 @@ export default function Map() {
       <div ref={containerRef} className="w-full h-full" />
 
       {mapReady && mapRef.current && (
-        <ZoneLayer map={mapRef.current} onZoneClick={handleZoneClick} />
+        <>
+          <SegOverlay map={mapRef.current} visible={showSegOverlay} />
+          <ZoneLayer map={mapRef.current} onZoneClick={handleZoneClick} />
+        </>
       )}
+
+      <button
+        onClick={() => setShowSegOverlay(v => !v)}
+        className={`absolute bottom-8 left-4 z-10 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold shadow-lg border transition-colors ${
+          showSegOverlay
+            ? 'bg-gray-900 border-violet-600 text-violet-300 hover:bg-gray-800'
+            : 'bg-gray-900 border-gray-600 text-gray-400 hover:bg-gray-800'
+        }`}
+      >
+        <span className={`w-2 h-2 rounded-full ${showSegOverlay ? 'bg-violet-400' : 'bg-gray-600'}`} />
+        Seg Overlay
+      </button>
 
       {showPanel && (
         <DetailPanel
