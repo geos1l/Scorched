@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -80,9 +81,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CanCool AI", lifespan=lifespan)
 
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
