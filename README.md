@@ -1,4 +1,4 @@
-# CanCool AI
+# Scorched
 
 Geospatial ML heat zone detector for Toronto. Identifies heat-prone urban zones by combining satellite image segmentation, thermal data, and open GIS layers to predict which areas are hottest, explain the surface-level causes, and recommend cooling interventions.
 
