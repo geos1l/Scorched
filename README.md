@@ -2,7 +2,7 @@
 
 Geospatial ML heat zone detector for Toronto. Identifies heat-prone urban zones by combining satellite image segmentation, thermal data, and open GIS layers to predict which areas are hottest, explain the surface-level causes, and recommend cooling interventions.
 
-Built at [Hack Canada 2026](https://devpost.com/software/scorched). Live at https://scorched-tau.vercel.app/
+Built at [Hack Canada 2026](https://devpost.com/software/scorched). Live demo at https://scorched-tau.vercel.app/.
 
 ## Stack
 
@@ -18,3 +18,8 @@ Built at [Hack Canada 2026](https://devpost.com/software/scorched). Live at http
 3. An XGBoost model predicts relative heat per 100m x 100m grid cell
 4. Hot cells are clustered into zones with severity ratings, top contributors, and recommended interventions
 5. Users explore results on an interactive map with clickable zones and AI-generated summaries
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
